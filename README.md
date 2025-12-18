@@ -34,14 +34,15 @@ Producer (Python – simulated IoT data)
 
 ## Project Structure
 
+```text
 ics474-iot-pipeline/
-├── docker/ # Docker Compose (Kafka, Spark, Postgres)
-├── producer/ # Python Kafka producer (simulated IoT data)
-├── spark_job/ # Spark Structured Streaming job
-├── db/ # Database schemas
-├── dashboard/ # Streamlit visualization dashboard
+├── docker/            # Docker Compose (Kafka, Spark, Postgres)
+├── producer/          # Python Kafka producer (simulated IoT data)
+├── spark_job/         # Spark Structured Streaming job
+├── db/                # Database schemas
+├── dashboard/         # Streamlit visualization dashboard
 ├── README.md
-├── CREDITS.md
+└── CREDITS.md
 
 ```bash
 ## How to Run the Project
