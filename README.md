@@ -43,6 +43,7 @@ ics474-iot-pipeline/
 ├── dashboard/         # Streamlit visualization dashboard
 ├── README.md
 └── CREDITS.md
+```
 
 ```bash
 ## How to Run the Project
