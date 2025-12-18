@@ -43,12 +43,11 @@ ics474-iot-pipeline/
 ├── README.md
 ├── CREDITS.md
 
-````bash
+```bash
 ## How to Run the Project
 
 
 ### 1. Start infrastructure
-```bash
 cd docker
 docker compose up -d
 
@@ -80,7 +79,7 @@ source .venv/bin/activate
 streamlit run app.py
 
 ---
-````
+```
 
 ## 7. Smart layer explanation (bonus marks)
 
