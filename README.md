@@ -43,11 +43,12 @@ ics474-iot-pipeline/
 ├── README.md
 ├── CREDITS.md
 
+````bash
 ## How to Run the Project
 
-### 1. Start infrastructure
 
-````bash
+### 1. Start infrastructure
+```bash
 cd docker
 docker compose up -d
 
@@ -79,9 +80,10 @@ source .venv/bin/activate
 streamlit run app.py
 
 ---
+````
 
 ## 7. Smart layer explanation (bonus marks)
-```md
+
 ## Smart Layer (Anomaly Detection)
 
 A smart analytics layer was implemented using Spark Structured Streaming rules.
@@ -100,4 +102,3 @@ Detected anomalies are stored in a dedicated PostgreSQL alerts table and visuali
 - Institution: King Fahd University of Petroleum & Minerals
 - Project Type: End-to-End Big Data Pipeline
 - Option: Rebuild an existing project with extensions
-````
