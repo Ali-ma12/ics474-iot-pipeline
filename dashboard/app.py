@@ -51,6 +51,16 @@ latest = run_query("""
 """)
 st.dataframe(latest, use_container_width=True)
 
+# --- Alerts ---- #
+st.subheader("🚨 Recent Alerts (Smart Layer)")
+alerts = run_query("""
+    SELECT created_at, car_id, trip_id, alert_type, severity, alert_message
+    FROM alerts
+    ORDER BY created_at DESC
+    LIMIT 20;
+""")
+st.dataframe(alerts, use_container_width=True)
+
 st.divider()
 
 # ---- Speed over time chart ----

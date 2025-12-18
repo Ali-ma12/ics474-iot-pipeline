@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
-    col, from_json, lit, current_timestamp, to_timestamp
+    col, from_json, lit, current_timestamp, to_timestamp,
+    when
 )
 from pyspark.sql.types import (
     StructType, StructField, StringType, DoubleType
@@ -60,7 +61,7 @@ def foreach_batch_writer(batch_df, batch_id):
         bad = parsed_df.filter(col("json").isNull())
 
         # -----------------------
-        # Write GOOD → device_data
+        # Build GOOD output once (we will reuse it for alerts too)
         # -----------------------
         good_out = (
             good
@@ -69,7 +70,6 @@ def foreach_batch_writer(batch_df, batch_id):
                 col("json.car_id").alias("car_id"),
                 col("json.latitude").alias("latitude"),
                 col("json.longitude").alias("longitude"),
-                # event_timestamp is a string from producer like "YYYY-MM-DD HH:MM:SS"
                 to_timestamp(col("json.event_timestamp"), "yyyy-MM-dd HH:mm:ss").alias("event_timestamp"),
                 col("json.speed_kmph").alias("speed_kmph"),
                 col("json.fuel_level").alias("fuel_level"),
@@ -85,8 +85,57 @@ def foreach_batch_writer(batch_df, batch_id):
             )
         )
 
-        if good_out.count() > 0:
+        # -----------------------
+        # Write GOOD → device_data
+        # -----------------------
+        if good_out.limit(1).count() > 0:
             good_out.write.jdbc(JDBC_URL, "device_data", mode="append", properties=JDBC_PROPS)
+
+        # -----------------------
+        # SMART LAYER: Generate Alerts from good_out
+        # -----------------------
+        alerts = (
+            good_out
+            .withColumn(
+                "alert_type",
+                when(col("speed_kmph") > 140, lit("OVERSPEED"))
+                .when(col("engine_temp_c") > 110, lit("ENGINE_OVERHEAT"))
+                .when(col("fuel_level") < 10, lit("LOW_FUEL"))
+                .when(
+                    (col("latitude") > 90) | (col("latitude") < -90) |
+                    (col("longitude") > 180) | (col("longitude") < -180),
+                    lit("GPS_INVALID")
+                )
+                .otherwise(lit(None))
+            )
+            .filter(col("alert_type").isNotNull())
+            .withColumn("rule_name", col("alert_type"))
+            .withColumn(
+                "severity",
+                when(col("alert_type") == "ENGINE_OVERHEAT", lit("HIGH"))
+                .when(col("alert_type") == "OVERSPEED", lit("MEDIUM"))
+                .otherwise(lit("LOW"))
+            )
+            .withColumn(
+                "alert_message",
+                when(col("alert_type") == "OVERSPEED", lit("Speed exceeded threshold (140 km/h)."))
+                .when(col("alert_type") == "ENGINE_OVERHEAT", lit("Engine temperature exceeded threshold (110C)."))
+                .when(col("alert_type") == "LOW_FUEL", lit("Fuel level below 10%."))
+                .when(col("alert_type") == "GPS_INVALID", lit("Latitude/Longitude out of valid range."))
+            )
+            .select(
+                "car_id",
+                "trip_id",
+                "event_timestamp",
+                "alert_type",
+                "alert_message",
+                "rule_name",
+                "severity"
+            )
+        )
+
+        if alerts.limit(1).count() > 0:
+            alerts.write.jdbc(JDBC_URL, "alerts", mode="append", properties=JDBC_PROPS)
 
         # --------------------------
         # Write CORRUPT → corrupt_records
@@ -104,7 +153,7 @@ def foreach_batch_writer(batch_df, batch_id):
             )
         )
 
-        if bad_out.count() > 0:
+        if bad_out.limit(1).count() > 0:
             bad_out.write.jdbc(JDBC_URL, "corrupt_records", mode="append", properties=JDBC_PROPS)
 
     except Exception as e:
@@ -140,7 +189,7 @@ def main():
     query = (
         base_df.writeStream
         .foreachBatch(foreach_batch_writer)
-        .outputMode("update")  # foreachBatch ignores outputMode; keep it simple
+        .outputMode("update")  # foreachBatch ignores outputMode
         .option("checkpointLocation", "/tmp/ics474_checkpoints/iot_pipeline")
         .start()
     )
